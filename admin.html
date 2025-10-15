@@ -561,7 +561,6 @@
             </button>
         </div>
 
-        <!-- DASHBOARD -->
         <div class="tab-content active" id="dashboard-tab">
             <div class="charts-grid">
                 <div class="chart-card">
@@ -585,7 +584,6 @@
             </div>
         </div>
 
-        <!-- PEDIDOS -->
         <div class="tab-content" id="pedidos-tab">
             <div class="loading" id="ordersLoading">
                 <i class="fas fa-spinner"></i>
@@ -594,7 +592,6 @@
             <div class="orders-grid" id="ordersGrid"></div>
         </div>
 
-        <!-- CARDÁPIO -->
         <div class="tab-content" id="cardapio-tab">
             <div class="category-tabs" id="categoryTabs">
                 <button class="category-tab active" onclick="filterByCategory('all')">
@@ -625,12 +622,10 @@
         </div>
     </div>
 
-    <!-- BOTÃO ADICIONAR PRODUTO -->
     <button class="add-product-btn" onclick="openProductModal()" id="addProductBtn" style="display: none;">
         <i class="fas fa-plus"></i>
     </button>
 
-    <!-- MODAL PRODUTO -->
     <div class="modal" id="productModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -682,7 +677,6 @@
         </div>
     </div>
 
-    <!-- ÁREA DE IMPRESSÃO (OCULTA) -->
     <div class="print-area" style="display: none;"></div>
 
     <script>
@@ -779,11 +773,28 @@
                 return;
             }
 
+            // Garante que só os IDs dos pedidos carregados na última vez permaneçam
+            // Se um novo INSERT acontecer, o ID é adicionado em setupRealtime()
+            const currentOrderIds = orders.map(o => o.id);
+            lastOrderIds = lastOrderIds.filter(id => currentOrderIds.includes(id));
+
             grid.innerHTML = orders.map(order => {
                 const createdAt = new Date(order.created_at);
                 const timeAgo = getTimeAgo(createdAt);
-                const isNew = !lastOrderIds.includes(order.id);
+                const isNew = lastOrderIds.includes(order.id);
                 
+                // Remove o ID do pedido da lista de "novos" após a renderização
+                if (isNew) {
+                    setTimeout(() => {
+                        const index = lastOrderIds.indexOf(order.id);
+                        if (index > -1) {
+                            lastOrderIds.splice(index, 1);
+                        }
+                        // Remove a classe 'new-order' após as 3 animações de pulse
+                        document.getElementById(`order-${order.id}`)?.classList.remove('new-order');
+                    }, 3000); 
+                }
+
                 return `
                     <div class="order-card ${isNew ? 'new-order' : ''}" id="order-${order.id}">
                         <div class="order-header">
@@ -973,7 +984,8 @@
                     showNotification(`Pedido atualizado para: ${getStatusName(newStatus)}`, 'success');
                 }
 
-                await loadOrders();
+                // Não precisa chamar loadOrders() aqui, pois o Realtime já fará isso após o UPDATE
+                // await loadOrders();
 
             } catch (error) {
                 console.error('❌ Erro ao atualizar pedido:', error);
@@ -1464,7 +1476,7 @@
             });
         }
 
-        // ==================== REALTIME ====================
+        // ==================== REALTIME (CORRIGIDO) ====================
 
         function setupRealtime() {
             supabaseClient
@@ -1476,6 +1488,9 @@
                 }, async (payload) => {
                     console.log('🔔 Mudança detectada:', payload);
                     
+                    const pedidosTab = document.getElementById('pedidos-tab');
+
+                    // Lógica para novo pedido (INSERT)
                     if (payload.eventType === 'INSERT') {
                         showNotification('🔔 NOVO PEDIDO RECEBIDO!', 'info');
                         playNotificationSound();
@@ -1483,9 +1498,29 @@
                         if (navigator.vibrate) {
                             navigator.vibrate([200, 100, 200]);
                         }
+
+                        // Adiciona o ID do novo pedido para que a animação 'new-order' funcione
+                        if (payload.new && payload.new.id) {
+                            lastOrderIds.push(payload.new.id); 
+                        }
                     }
                     
+                    // Garante que o recarregamento completo dos dados seja feito 
+                    // para obter a ordenação correta e os itens do pedido (order_items)
+                    // que não vêm no payload do realtime.
+                    
+                    // Oculta a lista por um momento se a aba estiver ativa para evitar flashes
+                    if (pedidosTab.classList.contains('active')) {
+                        document.getElementById('ordersGrid').style.opacity = 0.5;
+                    }
+
                     await loadOrders();
+                    
+                    // Restaura a opacidade após o carregamento
+                    if (pedidosTab.classList.contains('active')) {
+                        document.getElementById('ordersGrid').style.opacity = 1;
+                    }
+                    
                 })
                 .subscribe();
 
@@ -1509,7 +1544,8 @@
             console.log('🚀 Iniciando painel admin...');
             
             await loadOrders();
-            lastOrderIds = orders.map(o => o.id);
+            // Inicializa lastOrderIds com os IDs dos pedidos carregados na primeira vez
+            lastOrderIds = orders.map(o => o.id); 
             setupRealtime();
             
             console.log('✅ Painel admin iniciado!');
