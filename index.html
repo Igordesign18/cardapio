@@ -6,7 +6,7 @@
     <title>Painel Admin - Burguer House</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.com/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -124,6 +124,22 @@
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             transition: transform 0.2s;
+            animation: slideIn 0.3s ease;
+        }
+
+        .order-card.new-order {
+            animation: pulse 1s ease-in-out 3;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .order-card:hover {
@@ -230,6 +246,30 @@
         .btn-warning { background: #ff9800; color: white; }
         .btn-danger { background: #f44336; color: white; }
         .btn-info { background: #00bcd4; color: white; }
+
+        .category-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .category-tab {
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            color: #7f8c8d;
+        }
+
+        .category-tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
 
         .products-grid {
             display: grid;
@@ -415,45 +455,17 @@
             align-items: center;
             gap: 12px;
             z-index: 9999;
-            animation: slideIn 0.3s ease;
+            animation: slideInNotif 0.3s ease;
         }
 
         .notification.success { border-left: 4px solid #4CAF50; }
         .notification.error { border-left: 4px solid #f44336; }
+        .notification.info { border-left: 4px solid #2196f3; }
 
-        @keyframes slideIn {
+        @keyframes slideInNotif {
             from { transform: translateX(400px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
-        
-        /* Estilos para a navegação de categorias */
-        .category-nav {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e0e0e0;
-            overflow-x: auto;
-        }
-
-        .category-btn {
-            padding: 10px 20px;
-            background: #ecf0f1;
-            color: #2c3e50;
-            border: 1px solid #bdc3c7;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-
-        .category-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-
 
         @media print {
             body * {
@@ -549,6 +561,7 @@
             </button>
         </div>
 
+        <!-- DASHBOARD -->
         <div class="tab-content active" id="dashboard-tab">
             <div class="charts-grid">
                 <div class="chart-card">
@@ -572,6 +585,7 @@
             </div>
         </div>
 
+        <!-- PEDIDOS -->
         <div class="tab-content" id="pedidos-tab">
             <div class="loading" id="ordersLoading">
                 <i class="fas fa-spinner"></i>
@@ -580,21 +594,43 @@
             <div class="orders-grid" id="ordersGrid"></div>
         </div>
 
+        <!-- CARDÁPIO -->
         <div class="tab-content" id="cardapio-tab">
-            <div class="category-nav" id="categoryNav">
-                </div>
+            <div class="category-tabs" id="categoryTabs">
+                <button class="category-tab active" onclick="filterByCategory('all')">
+                    <i class="fas fa-th"></i> Todos
+                </button>
+                <button class="category-tab" onclick="filterByCategory('burgers')">
+                    🍔 Burgers
+                </button>
+                <button class="category-tab" onclick="filterByCategory('pizzas')">
+                    🍕 Pizzas
+                </button>
+                <button class="category-tab" onclick="filterByCategory('bebidas')">
+                    🥤 Bebidas
+                </button>
+                <button class="category-tab" onclick="filterByCategory('sobremesas')">
+                    🍰 Sobremesas
+                </button>
+                <button class="category-tab" onclick="filterByCategory('acompanhamentos')">
+                    🍟 Acompanhamentos
+                </button>
+            </div>
+            
             <div class="loading" id="productsLoading">
                 <i class="fas fa-spinner"></i>
-                <p>Carregando produtos...</p>
+                <p>Carregando cardápio...</p>
             </div>
             <div class="products-grid" id="productsGrid"></div>
         </div>
     </div>
 
+    <!-- BOTÃO ADICIONAR PRODUTO -->
     <button class="add-product-btn" onclick="openProductModal()" id="addProductBtn" style="display: none;">
         <i class="fas fa-plus"></i>
     </button>
 
+    <!-- MODAL PRODUTO -->
     <div class="modal" id="productModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -626,11 +662,11 @@
                     <label for="productCategory">Categoria *</label>
                     <select class="form-select" id="productCategory" required>
                         <option value="">Selecione...</option>
-                        <option value="burgers">Burgers</option>
-                        <option value="pizzas">Pizzas</option>
-                        <option value="bebidas">Bebidas</option>
-                        <option value="sobremesas">Sobremesas</option>
-                        <option value="acompanhamentos">Acompanhamentos</option>
+                        <option value="burgers">🍔 Burgers</option>
+                        <option value="pizzas">🍕 Pizzas</option>
+                        <option value="bebidas">🥤 Bebidas</option>
+                        <option value="sobremesas">🍰 Sobremesas</option>
+                        <option value="acompanhamentos">🍟 Acompanhamentos</option>
                     </select>
                 </div>
 
@@ -646,21 +682,12 @@
         </div>
     </div>
 
+    <!-- ÁREA DE IMPRESSÃO (OCULTA) -->
     <div class="print-area" style="display: none;"></div>
-    
-    <audio id="notificationSound" src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ0PVqzn7q9dGQxEnN7xwHEkBSl+zPDZjj4KFmG36+ukVhQKQ5zg8bllHAU2jdXzzn0pBSlz0PD"></audio>
-
 
     <script>
         const SUPABASE_URL = 'https://snvaahvqhvicgxudsvor.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNudmFhaHZxaHZpY2d4dWRzdm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTA4MDYsImV4cCI6MjA3NjA2NjgwNn0.zxv0pso4n1Pd4HKz2y4bELGopOiq27KOo3StSUkfsm4';
-        
-        // ==================== WEBHOOK N8N CONFIGURAÇÃO ====================
-        // Por favor, adicione os links dos seus webhooks do n8n aqui.
-        const N8N_PREPARING_WEBHOOK_URL = ''; // Ex: 'https://sua-n8n.com/webhook/preparando'
-        const N8N_DELIVERING_WEBHOOK_URL = '';  // Ex: 'https://sua-n8n.com/webhook/entregando'
-        // ==================================================================
-
 
         let supabaseClient;
         try {
@@ -673,7 +700,39 @@
         let orders = [];
         let products = [];
         let editingProductId = null;
-        let currentCategoryFilter = 'all';
+        let currentCategory = 'all';
+        let lastOrderIds = [];
+
+        // URLs dos Webhooks N8N - CONFIGURE AQUI
+        const WEBHOOK_INICIAR_PREPARO = ''; // Adicione sua URL do N8N aqui
+        const WEBHOOK_SAIU_ENTREGA = ''; // Adicione sua URL do N8N aqui
+
+        // ==================== WEBHOOKS ====================
+
+        async function callWebhook(url, data) {
+            if (!url) {
+                console.log('⚠️ Webhook não configurado');
+                return;
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    console.log('✅ Webhook chamado com sucesso');
+                } else {
+                    console.error('❌ Erro ao chamar webhook:', response.status);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao chamar webhook:', error);
+            }
+        }
 
         // ==================== CARREGAR PEDIDOS ====================
 
@@ -704,40 +763,6 @@
                 `;
             }
         }
-        
-        // ==================== ENVIAR WEBHOOK ====================
-
-        async function sendWebhook(webhookUrl, orderData) {
-            if (!webhookUrl) {
-                console.warn('⚠️ URL do Webhook não configurada. Pulando o envio.');
-                return;
-            }
-            
-            try {
-                const response = await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        order: orderData
-                    }),
-                    // Use 'no-cors' se o seu n8n não estiver configurado para CORS
-                    // mode: 'no-cors' 
-                });
-                
-                // N8N geralmente responde com um status 200, mas o corpo pode ser um JSON vazio ou customizado
-                console.log(`✅ Webhook enviado com sucesso para ${webhookUrl}`);
-                // Você pode inspecionar a resposta se necessário
-                // const result = await response.json();
-                // console.log('Resposta do Webhook:', result);
-
-            } catch (error) {
-                console.error(`❌ Erro ao enviar Webhook para ${webhookUrl}:`, error);
-                showNotification('Erro ao notificar n8n (Webhook)', 'error');
-            }
-        }
-
 
         // ==================== RENDERIZAR PEDIDOS ====================
 
@@ -757,9 +782,10 @@
             grid.innerHTML = orders.map(order => {
                 const createdAt = new Date(order.created_at);
                 const timeAgo = getTimeAgo(createdAt);
+                const isNew = !lastOrderIds.includes(order.id);
                 
                 return `
-                    <div class="order-card">
+                    <div class="order-card ${isNew ? 'new-order' : ''}" id="order-${order.id}">
                         <div class="order-header">
                             <div>
                                 <div class="order-id">#${order.id.substring(0, 8)}</div>
@@ -902,10 +928,9 @@
         // ==================== ATUALIZAR STATUS ====================
 
         async function updateOrderStatus(orderId, newStatus) {
-            const orderToUpdate = orders.find(o => o.id === orderId);
-            if (!orderToUpdate) return;
-            
             try {
+                const order = orders.find(o => o.id === orderId);
+                
                 const { error } = await supabaseClient
                     .from('orders')
                     .update({ status: newStatus })
@@ -913,17 +938,42 @@
 
                 if (error) throw error;
 
-                showNotification(`Pedido atualizado para: ${getStatusName(newStatus)}`, 'success');
-                // loadOrders() será chamado pelo listener do Realtime, garantindo que os dados do DOM estejam sempre sincronizados com o banco
-                // Se o Realtime estiver lento ou falhar, a chamada de setInterval irá carregar
-                
-                // Chamada do Webhook para n8n
-                if (newStatus === 'preparando') {
-                    sendWebhook(N8N_PREPARING_WEBHOOK_URL, orderToUpdate);
-                } else if (newStatus === 'entregando') {
-                    sendWebhook(N8N_DELIVERING_WEBHOOK_URL, orderToUpdate);
+                // Chamar webhooks internos
+                if (newStatus === 'preparando' && WEBHOOK_INICIAR_PREPARO) {
+                    await callWebhook(WEBHOOK_INICIAR_PREPARO, {
+                        event: 'iniciar_preparo',
+                        order_id: orderId,
+                        order_number: order.id.substring(0, 8),
+                        customer_name: order.customer_name,
+                        customer_phone: order.customer_phone,
+                        address: order.address || '',
+                        delivery_type: order.delivery_type,
+                        payment_method: order.payment_method,
+                        total: order.total,
+                        items: order.order_items,
+                        timestamp: new Date().toISOString()
+                    });
+                    showNotification('🔥 Preparo iniciado!', 'success');
+                } else if (newStatus === 'entregando' && WEBHOOK_SAIU_ENTREGA) {
+                    await callWebhook(WEBHOOK_SAIU_ENTREGA, {
+                        event: 'saiu_entrega',
+                        order_id: orderId,
+                        order_number: order.id.substring(0, 8),
+                        customer_name: order.customer_name,
+                        customer_phone: order.customer_phone,
+                        address: order.address || '',
+                        delivery_type: order.delivery_type,
+                        payment_method: order.payment_method,
+                        total: order.total,
+                        items: order.order_items,
+                        timestamp: new Date().toISOString()
+                    });
+                    showNotification('🏍️ Saiu para entrega!', 'success');
+                } else {
+                    showNotification(`Pedido atualizado para: ${getStatusName(newStatus)}`, 'success');
                 }
 
+                await loadOrders();
 
             } catch (error) {
                 console.error('❌ Erro ao atualizar pedido:', error);
@@ -960,8 +1010,7 @@
                 if (error) throw error;
 
                 products = data || [];
-                renderCategoryNav();
-                renderProducts(currentCategoryFilter);
+                renderProducts();
                 document.getElementById('productsLoading').style.display = 'none';
                 document.getElementById('addProductBtn').style.display = 'flex';
 
@@ -973,70 +1022,29 @@
                 `;
             }
         }
-        
-        // ==================== NAVEGAÇÃO DE CATEGORIAS ====================
-        
-        function renderCategoryNav() {
-            const nav = document.getElementById('categoryNav');
-            const categories = new Set(products.map(p => p.category));
-            
-            let html = `
-                <button class="category-btn ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="filterProducts('all')">
-                    <i class="fas fa-list"></i> Todos
-                </button>
-            `;
-            
-            categories.forEach(category => {
-                html += `
-                    <button class="category-btn ${currentCategoryFilter === category ? 'active' : ''}" onclick="filterProducts('${category}')">
-                        <i class="${getCategoryIcon(category)}"></i> ${getCategoryName(category)}
-                    </button>
-                `;
-            });
-            
-            nav.innerHTML = html;
-        }
-        
-        function filterProducts(category) {
-            currentCategoryFilter = category;
-            document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`.category-btn[onclick="filterProducts('${category}')"]`).classList.add('active');
-            renderProducts(category);
-        }
-
 
         // ==================== RENDERIZAR PRODUTOS ====================
 
-        function renderProducts(filter = 'all') {
+        function renderProducts() {
             const grid = document.getElementById('productsGrid');
             
-            const filteredProducts = filter === 'all' 
-                ? products 
-                : products.filter(p => p.category === filter);
+            let filteredProducts = products;
+            if (currentCategory !== 'all') {
+                filteredProducts = products.filter(p => p.category === currentCategory);
+            }
             
-            if (products.length === 0) {
+            if (filteredProducts.length === 0) {
                 grid.innerHTML = `
                     <div style="text-align: center; padding: 60px; color: #7f8c8d; grid-column: 1/-1;">
                         <i class="fas fa-inbox" style="font-size: 5em; margin-bottom: 20px; opacity: 0.3;"></i>
-                        <h3>Nenhum produto cadastrado</h3>
+                        <h3>Nenhum produto nesta categoria</h3>
                         <button onclick="openProductModal()" class="btn btn-success" style="margin-top: 20px;">
-                            <i class="fas fa-plus"></i> Adicionar Primeiro Produto
+                            <i class="fas fa-plus"></i> Adicionar Produto
                         </button>
                     </div>
                 `;
                 return;
             }
-
-            if (filteredProducts.length === 0) {
-                grid.innerHTML = `
-                    <div style="text-align: center; padding: 60px; color: #7f8c8d; grid-column: 1/-1;">
-                        <i class="fas fa-box-open" style="font-size: 5em; margin-bottom: 20px; opacity: 0.3;"></i>
-                        <h3>Nenhum produto encontrado nesta categoria.</h3>
-                    </div>
-                `;
-                return;
-            }
-
 
             grid.innerHTML = filteredProducts.map(product => `
                 <div class="product-card-admin">
@@ -1056,6 +1064,19 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        // ==================== FILTRAR POR CATEGORIA ====================
+
+        function filterByCategory(category) {
+            currentCategory = category;
+            
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderProducts();
         }
 
         // ==================== MODAL PRODUTO ====================
@@ -1103,7 +1124,6 @@
 
             try {
                 if (editingProductId) {
-                    // Atualizar produto existente
                     const { error } = await supabaseClient
                         .from('products')
                         .update(productData)
@@ -1112,7 +1132,6 @@
                     if (error) throw error;
                     showNotification('Produto atualizado com sucesso!', 'success');
                 } else {
-                    // Criar novo produto
                     const { error } = await supabaseClient
                         .from('products')
                         .insert([productData]);
@@ -1356,20 +1375,11 @@
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             
-            // Corrige para que o clique no ícone ou no texto do botão funcione
-            let buttonElement = event.target;
-            while (buttonElement.tagName !== 'BUTTON') {
-                buttonElement = buttonElement.parentNode;
-            }
-            buttonElement.classList.add('active');
-
+            event.target.classList.add('active');
             document.getElementById(`${tabName}-tab`).classList.add('active');
 
             if (tabName === 'cardapio' && products.length === 0) {
                 loadProducts();
-            } else if (tabName === 'cardapio' && products.length > 0) {
-                renderCategoryNav();
-                renderProducts(currentCategoryFilter);
             }
         }
 
@@ -1395,24 +1405,13 @@
 
         function getCategoryName(category) {
             const names = {
-                burgers: 'Burgers',
-                pizzas: 'Pizzas',
-                bebidas: 'Bebidas',
-                sobremesas: 'Sobremesas',
-                acompanhamentos: 'Acompanhamentos'
+                burgers: '🍔 Burgers',
+                pizzas: '🍕 Pizzas',
+                bebidas: '🥤 Bebidas',
+                sobremesas: '🍰 Sobremesas',
+                acompanhamentos: '🍟 Acompanhamentos'
             };
             return names[category] || category;
-        }
-        
-        function getCategoryIcon(category) {
-            const icons = {
-                burgers: 'fas fa-hamburger',
-                pizzas: 'fas fa-pizza-slice',
-                bebidas: 'fas fa-mug-hot',
-                sobremesas: 'fas fa-ice-cream',
-                acompanhamentos: 'fas fa-fries'
-            };
-            return icons[category] || 'fas fa-utensils';
         }
 
         function getTimeAgo(date) {
@@ -1428,7 +1427,7 @@
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
                 <div>${message}</div>
             `;
             
@@ -1436,13 +1435,33 @@
             
             setTimeout(() => {
                 notification.remove();
-            }, 3000);
+            }, 4000);
         }
 
+        // ==================== SOM DE NOTIFICAÇÃO ====================
+
         function playNotificationSound() {
-            // Usa o elemento de áudio no DOM para melhor compatibilidade com base64
-            const audio = document.getElementById('notificationSound');
-            audio.play().catch(() => {});
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            [523.25, 659.25, 783.99].forEach((freq, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = freq;
+                oscillator.type = 'sine';
+                
+                const startTime = audioContext.currentTime + (index * 0.15);
+                const endTime = startTime + 0.1;
+                
+                gainNode.gain.setValueAtTime(0.3, startTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, endTime);
+                
+                oscillator.start(startTime);
+                oscillator.stop(endTime);
+            });
         }
 
         // ==================== REALTIME ====================
@@ -1454,16 +1473,19 @@
                     event: '*',
                     schema: 'public',
                     table: 'orders'
-                }, (payload) => {
-                    console.log('🔔 Mudança detectada nos pedidos:', payload);
-                    
-                    // Recarrega os pedidos e atualiza o DOM/Estatísticas/Gráficos
-                    loadOrders();
+                }, async (payload) => {
+                    console.log('🔔 Mudança detectada:', payload);
                     
                     if (payload.eventType === 'INSERT') {
-                        showNotification('🔔 Novo pedido recebido!', 'success');
+                        showNotification('🔔 NOVO PEDIDO RECEBIDO!', 'info');
                         playNotificationSound();
+                        
+                        if (navigator.vibrate) {
+                            navigator.vibrate([200, 100, 200]);
+                        }
                     }
+                    
+                    await loadOrders();
                 })
                 .subscribe();
 
@@ -1474,7 +1496,6 @@
                     schema: 'public',
                     table: 'products'
                 }, () => {
-                    console.log('🔔 Mudança detectada nos produtos');
                     if (document.getElementById('cardapio-tab').classList.contains('active')) {
                         loadProducts();
                     }
@@ -1486,16 +1507,14 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 Iniciando painel admin...');
-            await loadOrders();
-            setupRealtime();
             
-            // Mantém o intervalo de segurança para recarregar caso o Realtime falhe
-            setInterval(loadOrders, 30000); 
+            await loadOrders();
+            lastOrderIds = orders.map(o => o.id);
+            setupRealtime();
             
             console.log('✅ Painel admin iniciado!');
         });
 
-        // Fechar modal ao clicar fora
         document.getElementById('productModal').addEventListener('click', (e) => {
             if (e.target.id === 'productModal') {
                 closeProductModal();
