@@ -790,10 +790,8 @@
     </style>
 </head>
 <body>
-    <!-- NOTIFICATIONS -->
     <div class="notifications-container" id="notificationsContainer"></div>
 
-    <!-- LOGIN PAGE -->
     <div class="login-container" id="loginPage">
         <div class="login-box">
             <div class="login-header">
@@ -817,9 +815,7 @@
         </div>
     </div>
 
-    <!-- ADMIN PANEL -->
     <div id="adminPanel" class="hidden">
-        <!-- SIDEBAR -->
         <div class="sidebar">
             <div class="logo">
                 <i class="fas fa-utensils"></i>
@@ -856,9 +852,7 @@
             </button>
         </div>
 
-        <!-- MAIN CONTENT -->
         <div class="main-content">
-            <!-- DASHBOARD -->
             <div class="content-section active" id="dashboardSection">
                 <div class="top-header">
                     <h1 class="header-title"><i class="fas fa-chart-line"></i> Dashboard</h1>
@@ -912,7 +906,6 @@
                 </div>
             </div>
 
-            <!-- PEDIDOS -->
             <div class="content-section" id="pedidosSection">
                 <div class="top-header">
                     <h1 class="header-title"><i class="fas fa-receipt"></i> Gestão de Pedidos</h1>
@@ -945,7 +938,6 @@
                 <div class="orders-grid" id="ordersGrid"></div>
             </div>
 
-            <!-- PRODUTOS -->
             <div class="content-section" id="produtosSection">
                 <div class="top-header">
                     <h1 class="header-title"><i class="fas fa-hamburger"></i> Gestão de Produtos</h1>
@@ -959,7 +951,6 @@
                 <div class="products-grid" id="productsGrid"></div>
             </div>
 
-            <!-- RELATÓRIOS -->
             <div class="content-section" id="relatoriosSection">
                 <div class="top-header">
                     <h1 class="header-title"><i class="fas fa-file-alt"></i> Relatórios</h1>
@@ -973,7 +964,6 @@
         </div>
     </div>
 
-    <!-- MODAL PRODUTO -->
     <div class="modal" id="productModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1028,9 +1018,13 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO DO SUPABASE
-        const SUPABASE_URL = 'https://snvaahvqhvicgxudsvor.supabase.co'; // Substitua pela sua URL do Supabase
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNudmFhaHZxaHZpY2d4dWRzdm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTA4MDYsImV4cCI6MjA3NjA2NjgwNn0.zxv0pso4n1Pd4HKz2y4bELGopOiq27KOo3StSUkfsm4'; // Substitua pela sua chave pública
+        // ======================================================================================
+        // ATENÇÃO: SUBSTITUA COM SUAS CREDENCIAIS REAIS DO SUPABASE
+        // A CHAVE DEVE SER A 'anon' (public)
+        // ======================================================================================
+        const SUPABASE_URL = 'https://snvaahvqhvicgxudsvor.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNudmFhaHZxaHZpY2d4dWRzdm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTA4MDYsImV4cCI6MjA3NjA2NjgwNn0.zxv0pso4n1Pd4HKz2y4bELGopOiq27KOo3StSUkfsm4'; 
+        // ======================================================================================
 
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -1040,7 +1034,7 @@
 
         // ==================== AUTENTICAÇÃO ====================
 
-        // LOGIN
+        // LOGIN (COM TRATAMENTO DE ERRO MELHORADO)
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -1052,19 +1046,26 @@
             loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
 
             try {
+                // Tenta fazer o login
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
 
-                if (error) throw error;
+                if (error) {
+                    // Lança o erro para o bloco catch
+                    throw error; 
+                }
 
                 currentUser = data.user;
                 showNotification('Login realizado com sucesso!', 'success');
                 showAdminPanel();
                 
             } catch (error) {
-                showNotification('Erro ao fazer login: ' + error.message, 'error');
+                // Captura o erro, exibe a mensagem detalhada e restaura o botão
+                console.error('Erro ao fazer login:', error);
+                // A mensagem de erro do Supabase é exibida na notificação
+                showNotification('Erro ao fazer login: ' + error.message, 'error'); 
                 loginBtn.disabled = false;
                 loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
             }
@@ -1094,7 +1095,8 @@
         function showAdminPanel() {
             document.getElementById('loginPage').classList.add('hidden');
             document.getElementById('adminPanel').classList.remove('hidden');
-            document.getElementById('userEmail').textContent = currentUser.email;
+            // Garante que currentUser existe antes de tentar acessar .email
+            document.getElementById('userEmail').textContent = currentUser ? currentUser.email : 'Admin'; 
             loadDashboard();
             loadProducts();
             loadOrders();
@@ -1105,6 +1107,7 @@
         // CARREGAR PRODUTOS
         async function loadProducts() {
             try {
+                // A chave pública anon precisa de permissão de RLS para SELECT em 'products'
                 const { data, error } = await supabase
                     .from('products')
                     .select('*')
@@ -1249,6 +1252,7 @@
                     const fileName = `${Math.random()}.${fileExt}`;
                     const filePath = `products/${fileName}`;
 
+                    // O usuário precisa estar logado (authenticated) e ter políticas de RLS para upload
                     const { error: uploadError } = await supabase.storage
                         .from('product-images')
                         .upload(filePath, imageFile);
@@ -1271,7 +1275,7 @@
                 };
 
                 if (editingProductId) {
-                    // Atualizar produto existente
+                    // Atualizar produto existente (RLS: UPDATE para authenticated)
                     const { error } = await supabase
                         .from('products')
                         .update(productData)
@@ -1280,7 +1284,7 @@
                     if (error) throw error;
                     showNotification('Produto atualizado com sucesso!', 'success');
                 } else {
-                    // Criar novo produto
+                    // Criar novo produto (RLS: INSERT para authenticated)
                     const { error } = await supabase
                         .from('products')
                         .insert([productData]);
@@ -1308,6 +1312,7 @@
             if (!confirm('Tem certeza que deseja excluir este produto?')) return;
 
             try {
+                // RLS: DELETE para authenticated
                 const { error } = await supabase
                     .from('products')
                     .delete()
@@ -1329,6 +1334,7 @@
         // CARREGAR PEDIDOS
         async function loadOrders() {
             try {
+                // RLS: SELECT para authenticated
                 const { data, error } = await supabase
                     .from('orders')
                     .select('*, order_items(*)')
@@ -1345,7 +1351,7 @@
             }
         }
 
-        // RENDERIZAR PEDIDOS
+        // RENDERIZAR PEDIDOS (Função sem alterações)
         function renderOrders(orders) {
             const grid = document.getElementById('ordersGrid');
             const filteredOrders = orders.filter(o => o.status === currentFilter);
@@ -1409,7 +1415,7 @@
             `).join('');
         }
 
-        // AÇÕES DOS PEDIDOS
+        // AÇÕES DOS PEDIDOS (Função sem alterações)
         function getOrderActions(order) {
             const actions = {
                 'novo': `
@@ -1435,6 +1441,7 @@
         // ATUALIZAR STATUS DO PEDIDO
         async function updateOrderStatus(orderId, newStatus) {
             try {
+                // RLS: UPDATE para authenticated
                 const { error } = await supabase
                     .from('orders')
                     .update({ status: newStatus })
@@ -1457,7 +1464,7 @@
             }
         }
 
-        // FILTRAR PEDIDOS
+        // FILTRAR PEDIDOS (Função sem alterações)
         function filterOrders(status) {
             currentFilter = status;
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -1465,7 +1472,7 @@
             loadOrders();
         }
 
-        // ATUALIZAR ESTATÍSTICAS DE PEDIDOS
+        // ATUALIZAR ESTATÍSTICAS DE PEDIDOS (Função sem alterações)
         function updateOrderStats(orders) {
             const statusCounts = {
                 'novo': 0,
@@ -1490,7 +1497,7 @@
 
         async function loadDashboard() {
             try {
-                // Carregar estatísticas
+                // RLS: SELECT para authenticated
                 const { data: orders } = await supabase
                     .from('orders')
                     .select('*');
@@ -1560,7 +1567,7 @@
             return texts[status] || status;
         }
 
-        // NOTIFICAÇÕES
+        // NOTIFICAÇÕES (Função sem alterações)
         function showNotification(message, type = 'info') {
             const container = document.getElementById('notificationsContainer');
             const notification = document.createElement('div');
@@ -1585,7 +1592,7 @@
             }, 5000);
         }
 
-        // NAVEGAÇÃO
+        // NAVEGAÇÃO (Função sem alterações)
         function showSection(section) {
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
@@ -1598,7 +1605,7 @@
             if (section === 'produtos') loadProducts();
         }
 
-        // REALTIME - Escutar mudanças no banco
+        // REALTIME - Escutar mudanças no banco (Função sem alterações)
         function setupRealtimeSubscriptions() {
             // Escutar novos pedidos
             supabase
@@ -1620,7 +1627,7 @@
                 .subscribe();
         }
 
-        // SOM DE NOTIFICAÇÃO
+        // SOM DE NOTIFICAÇÃO (Função sem alterações)
         function playNotificationSound() {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioContext.createOscillator();
@@ -1639,7 +1646,7 @@
             oscillator.stop(audioContext.currentTime + 0.5);
         }
 
-        // INICIALIZAÇÃO
+        // INICIALIZAÇÃO (Função sem alterações)
         checkSession();
         setupRealtimeSubscriptions();
     </script>
