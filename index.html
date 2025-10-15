@@ -548,6 +548,17 @@
             cursor: not-allowed;
         }
 
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         /* RESPONSIVE */
         @media (max-width: 768px) {
             .cart-sidebar {
@@ -673,10 +684,25 @@
 
     <script>
         // CONFIGURAÇÃO DO SUPABASE
-        const SUPABASE_URL = 'https://snvaahvqhvicgxudsvor.supabase.co'; // Substitua pela sua URL
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNudmFhaHZxaHZpY2d4dWRzdm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTA4MDYsImV4cCI6MjA3NjA2NjgwNn0.zxv0pso4n1Pd4HKz2y4bELGopOiq27KOo3StSUkfsm4'; // Substitua pela sua chave
+        const SUPABASE_URL = 'https://snvaahvqhvicgxudsvor.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNudmFhaHZxaHZpY2d4dWRzdm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTA4MDYsImV4cCI6MjA3NjA2NjgwNn0.zxv0pso4n1Pd4HKz2y4bELGopOiq27KOo3StSUkfsm4';
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log('🔧 Iniciando aplicação...');
+        console.log('📦 Supabase library:', typeof supabase);
+        
+        let supabaseClient;
+        try {
+            const { createClient } = supabase;
+            console.log('✅ createClient encontrado:', typeof createClient);
+            supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+            console.log('✅ Cliente Supabase criado:', supabaseClient);
+        } catch (error) {
+            console.error('❌ Erro ao criar cliente Supabase:', error);
+            document.getElementById('loadingIndicator').innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Erro ao inicializar: ${error.message}</p>
+            `;
+        }
 
         // VARIÁVEIS GLOBAIS
         let products = [];
@@ -689,17 +715,36 @@
 
         async function loadProducts() {
             try {
+                console.log('📋 Iniciando carregamento de produtos...');
                 document.getElementById('loadingIndicator').style.display = 'block';
                 document.getElementById('productsGrid').style.display = 'none';
 
-                const { data, error } = await supabase
+                console.log('🔌 Tentando conectar ao Supabase...');
+                const { data, error } = await supabaseClient
                     .from('products')
                     .select('*')
                     .order('name');
 
-                if (error) throw error;
+                console.log('📊 Resposta do Supabase:', { data, error });
+
+                if (error) {
+                    console.error('❌ Erro do Supabase:', error);
+                    throw error;
+                }
 
                 products = data || [];
+                console.log('✅ Produtos carregados:', products.length);
+                
+                if (products.length === 0) {
+                    console.warn('⚠️ Nenhum produto encontrado na tabela!');
+                    document.getElementById('loadingIndicator').innerHTML = `
+                        <i class="fas fa-inbox"></i>
+                        <p>Nenhum produto cadastrado ainda</p>
+                        <p style="font-size: 0.9em; margin-top: 10px;">Adicione produtos no painel administrativo</p>
+                    `;
+                    return;
+                }
+                
                 renderProducts();
                 loadCategories();
                 
@@ -707,11 +752,12 @@
                 document.getElementById('productsGrid').style.display = 'grid';
 
             } catch (error) {
-                console.error('Erro ao carregar produtos:', error);
+                console.error('❌ Erro ao carregar produtos:', error);
                 showNotification('Erro ao carregar cardápio. Tente novamente.', 'warning');
                 document.getElementById('loadingIndicator').innerHTML = `
                     <i class="fas fa-exclamation-triangle"></i>
                     <p>Erro ao carregar cardápio</p>
+                    <p style="font-size: 0.9em; margin-top: 10px;">${error.message}</p>
                     <button onclick="loadProducts()" style="margin-top: 15px; padding: 10px 20px; background: #FF6B6B; color: white; border: none; border-radius: 8px; cursor: pointer;">Tentar Novamente</button>
                 `;
             }
@@ -863,6 +909,8 @@
                 `).join('');
                 checkoutBtn.disabled = false;
             }
+            
+            saveCartToStorage();
         }
 
         function changeQuantity(productId, delta) {
@@ -977,7 +1025,7 @@
                 const total = subtotal + deliveryFee;
 
                 // Inserir pedido
-                const { data: orderData, error: orderError } = await supabase
+                const { data: orderData, error: orderError } = await supabaseClient
                     .from('orders')
                     .insert([{
                         customer_name: customerName,
@@ -1001,7 +1049,7 @@
                     price: parseFloat(item.price)
                 }));
 
-                const { error: itemsError } = await supabase
+                const { error: itemsError } = await supabaseClient
                     .from('order_items')
                     .insert(orderItems);
 
@@ -1089,8 +1137,6 @@
         function closeOrderConfirmation() {
             const modal = document.getElementById('checkoutModal');
             modal.classList.remove('active');
-            
-            // Restaurar conteúdo original do modal
             location.reload();
         }
 
@@ -1174,8 +1220,7 @@
         // ==================== REALTIME ====================
 
         function setupRealtimeSubscriptions() {
-            // Escutar mudanças nos produtos
-            supabase
+            supabaseClient
                 .channel('products-changes')
                 .on('postgres_changes', { 
                     event: '*', 
@@ -1189,7 +1234,7 @@
                 .subscribe();
         }
 
-        // ==================== CARREGAR CARRINHO DO LOCALSTORAGE ====================
+        // ==================== LOCALSTORAGE ====================
 
         function loadCartFromStorage() {
             const savedCart = localStorage.getItem('burguerhouse_cart');
@@ -1207,23 +1252,14 @@
             localStorage.setItem('burguerhouse_cart', JSON.stringify(cart));
         }
 
-        // Salvar carrinho sempre que atualizar
-        const originalUpdateCart = updateCart;
-        updateCart = function() {
-            originalUpdateCart();
-            saveCartToStorage();
-        };
-
         // ==================== ATALHOS DE TECLADO ====================
 
         document.addEventListener('keydown', (e) => {
-            // ESC - Fechar modais
             if (e.key === 'Escape') {
                 document.getElementById('cartSidebar').classList.remove('open');
                 document.getElementById('checkoutModal').classList.remove('active');
             }
             
-            // Ctrl/Cmd + K - Focar na busca
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 document.getElementById('searchInput').focus();
@@ -1251,49 +1287,37 @@
             });
         }
 
-        // Adicionar CSS para animação
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeInUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(30px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-        `;
-        document.head.appendChild(style);
-
-        // ==================== PWA - SERVICE WORKER ====================
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                // Registrar service worker aqui se necessário
-            });
-        }
-
         // ==================== INICIALIZAÇÃO ====================
 
         document.addEventListener('DOMContentLoaded', async () => {
-            loadCartFromStorage();
-            await loadProducts();
-            setupRealtimeSubscriptions();
+            console.log('🚀 DOM carregado, iniciando aplicação...');
             
-            // Animações após carregar produtos
-            setTimeout(() => {
-                addScrollAnimation();
-            }, 500);
+            try {
+                loadCartFromStorage();
+                console.log('✅ Carrinho carregado do localStorage');
+                
+                await loadProducts();
+                console.log('✅ Produtos carregados');
+                
+                setupRealtimeSubscriptions();
+                console.log('✅ Realtime configurado');
+                
+                setTimeout(() => {
+                    addScrollAnimation();
+                }, 500);
 
-            // Mensagem de boas-vindas
-            setTimeout(() => {
-                showNotification('Bem-vindo ao Burguer House! 🍔', 'success');
-            }, 1000);
+                setTimeout(() => {
+                    showNotification('Bem-vindo ao Burguer House! 🍔', 'success');
+                }, 1000);
+                
+                console.log('✅ Aplicação iniciada com sucesso!');
+            } catch (error) {
+                console.error('❌ Erro na inicialização:', error);
+                showNotification('Erro ao iniciar aplicação: ' + error.message, 'warning');
+            }
         });
 
-        // ==================== VERIFICAR CONEXÃO ====================
+        // ==================== CONEXÃO ====================
 
         window.addEventListener('online', () => {
             showNotification('Conexão restaurada! 🌐', 'success');
@@ -1304,19 +1328,11 @@
             showNotification('Você está offline. Verifique sua conexão.', 'warning');
         });
 
-        // ==================== ANALYTICS (OPCIONAL) ====================
+        // ==================== ANALYTICS ====================
 
         function trackEvent(eventName, data) {
-            // Integrar com Google Analytics ou outra ferramenta
             console.log('Event:', eventName, data);
         }
-
-        // Exemplo de uso
-        const originalAddToCart = addToCart;
-        addToCart = function(product) {
-            trackEvent('add_to_cart', { product_id: product.id, product_name: product.name });
-            originalAddToCart(product);
-        };
     </script>
 </body>
 </html>
