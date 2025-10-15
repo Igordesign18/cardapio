@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rastrear Pedido - Burguer House</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .tracking-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header i {
+            font-size: 3em;
+            color: #FF6B6B;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #7f8c8d;
+        }
+
+        .search-section {
+            background: #f9f9f9;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .search-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #FF6B6B;
+        }
+
+        .search-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .order-details {
+            display: none;
+        }
+
+        .order-details.active {
+            display: block;
+        }
+
+        .order-header {
+            background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .order-id {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .order-time {
+            opacity: 0.9;
+        }
+
+        .status-timeline {
+            margin-bottom: 30px;
+        }
+
+        .timeline-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .timeline-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 50px;
+            width: 2px;
+            height: 40px;
+            background: #e0e0e0;
+        }
+
+        .timeline-step.completed::after {
+            background: #4CAF50;
+        }
+
+        .timeline-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            background: #e0e0e0;
+            color: white;
+            flex-shrink: 0;
+            margin-right: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .timeline-step.completed .timeline-icon {
+            background: linear-gradient(135deg, #4CAF50, #66BB6A);
+        }
+
+        .timeline-step.current .timeline-icon {
+            background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .timeline-time {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .order-info-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #7f8c8d;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .items-list {
+            margin-top: 15px;
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .item-name {
+            color: #2c3e50;
+        }
+
+        .item-price {
+            font-weight: 600;
+            color: #FF6B6B;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            margin-top: 15px;
+            border-top: 2px solid #e0e0e0;
+            font-size: 1.3em;
+        }
+
+        .total-label {
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .total-value {
+            font-weight: 700;
+            color: #FF6B6B;
+        }
+
+        .estimated-time {
+            background: linear-gradient(135deg, #2196F3, #42A5F5);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .estimated-time i {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .estimated-time-text {
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .back-btn {
+            width: 100%;
+            padding: 15px;
+            background: #7f8c8d;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #6c7a7b;
+        }
+
+        .error-message {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: #856404;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .loading i {
+            font-size: 3em;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: none;
+            align-items: center;
+            gap: 15px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.show {
+            display: flex;
+        }
+
+        .notification.success {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .notification.error {
+            border-left: 4px solid #f44336;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .tracking-card {
+                padding: 25px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .order-id {
+                font-size: 1.4em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="notification" id="notification">
+        <div id="notificationIcon"></div>
+        <div id="notificationMessage"></div>
+    </div>
+
+    <div class="container">
+        <div class="tracking-card">
+            <div class="header">
+                <i class="fas fa-map-marked-alt"></i>
+                <h1>Rastrear Pedido</h1>
+                <p>Acompanhe seu pedido em tempo real</p>
+            </div>
+
+            <!-- BUSCA -->
+            <div class="search-section" id="searchSection">
+                <div class="search-title">
+                    <i class="fas fa-search"></i> Encontre seu pedido
+                </div>
+                <form id="searchForm">
+                    <div class="form-group">
+                        <label class="form-label">ID do Pedido</label>
+                        <input 
+                            type="text" 
+                            class="form-input" 
+                            id="orderId" 
+                            placeholder="Ex: 123e4567-e89b"
+                            required
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Telefone</label>
+                        <input 
+                            type="tel" 
+                            class="form-input" 
+                            id="customerPhone" 
+                            placeholder="(00) 00000-0000"
+                            required
+                        >
+                    </div>
+                    <button type="submit" class="search-btn" id="searchBtn">
+                        <i class="fas fa-search"></i> Buscar Pedido
+                    </button>
+                </form>
+            </div>
+
+            <!-- DETALHES DO PEDIDO -->
+            <div class="order-details" id="orderDetails">
+                <div class="order-header">
+                    <div class="order-id" id="displayOrderId"></div>
+                    <div class="order-time" id="displayOrderTime"></div>
+                </div>
+
+                <!-- TEMPO ESTIMADO -->
+                <div class="estimated-time" id="estimatedTime">
+                    <i class="fas fa-clock"></i>
+                    <div class="estimated-time-text" id="estimatedTimeText"></div>
+                </div>
+
+                <!-- TIMELINE DE STATUS -->
+                <div class="status-timeline" id="statusTimeline"></div>
+
+                <!-- INFORMAÇÕES DO PEDIDO -->
+                <div class="order-info-section">
+                    <div class="info-title">
+                        <i class="fas fa-info-circle"></i> Informações
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Cliente:</span>
+                        <span class="info-value" id="displayCustomerName"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Telefone:</span>
+                        <span class="info-value" id="displayCustomerPhone"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Tipo:</span>
+                        <span class="info-value" id="displayDeliveryType"></span>
+                    </div>
+                    <div class="info-row" id="addressRow" style="display: none;">
+                        <span class="info-label">Endereço:</span>
+                        <span class="info-value" id="displayAddress"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Pagamento:</span>
+                        <span class="info-value" id="displayPayment"></span>
+                    </div>
+                </div>
+
+                <!-- ITENS DO PEDIDO -->
+                <div class="order-info-section">
+                    <div class="info-title">
+                        <i class="fas fa-receipt"></i> Itens do Pedido
+                    </div>
+                    <div class="items-list" id="itemsList"></div>
+                    <div class="total-row">
+                        <span class="total-label">Total:</span>
+                        <span class="total-value" id="displayTotal"></span>
+                    </div>
+                </div>
+
+                <button class="back-btn" onclick="resetSearch()">
+                    <i class="fas fa-arrow-left"></i> Buscar Outro Pedido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURAÇÃO DO SUPABASE
+        const SUPABASE_URL = 'https://snvaahvqhvicgxudsvor.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNudmFhaHZxaHZpY2d4dWRzdm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTA4MDYsImV4cCI6MjA3NjA2NjgwNn0.zxv0pso4n1Pd4HKz2y4bELGopOiq27KOo3StSUkfsm4';
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentOrder = null;
+        let realtimeChannel = null;
+
+        // ==================== BUSCAR PEDIDO ====================
+
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const orderId = document.getElementById('orderId').value.trim();
+            const customerPhone = document.getElementById('customerPhone').value.trim();
+            const searchBtn = document.getElementById('searchBtn');
+            
+            searchBtn.disabled = true;
+            searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+
+            try {
+                // Buscar pedido
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('*, order_items(*)')
+                    .ilike('id', `${orderId}%`)
+                    .eq('customer_phone', customerPhone)
+                    .single();
+
+                if (error) {
+                    if (error.code === 'PGRST116') {
+                        throw new Error('Pedido não encontrado. Verifique o ID e telefone.');
+                    }
+                    throw error;
+                }
+
+                currentOrder = data;
+                displayOrderDetails(data);
+                setupRealtimeTracking(data.id);
+                
+            } catch (error) {
+                console.error('Erro ao buscar pedido:', error);
+                showNotification(error.message || 'Erro ao buscar pedido', 'error');
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.innerHTML = '<i class="fas fa-search"></i> Buscar Pedido';
+            }
+        });
+
+        // ==================== EXIBIR DETALHES ====================
+
+        function displayOrderDetails(order) {
+            document.getElementById('searchSection').style.display = 'none';
+            document.getElementById('orderDetails').classList.add('active');
+
+            // Header
+            document.getElementById('displayOrderId').textContent = '#' + order.id.substring(0, 8).toUpperCase();
+            document.getElementById('displayOrderTime').textContent = 
+                'Pedido realizado em ' + new Date(order.created_at).toLocaleString('pt-BR');
+
+            // Tempo estimado
+            updateEstimatedTime(order.status, order.delivery_type);
+
+            // Timeline
+            updateTimeline(order);
+
+            // Informações
+            document.getElementById('displayCustomerName').textContent = order.customer_name;
+            document.getElementById('displayCustomerPhone').textContent = order.customer_phone;
+            document.getElementById('displayDeliveryType').textContent = 
+                order.delivery_type === 'delivery' ? '🏍️ Delivery' : '🚶 Retirada';
+            document.getElementById('displayPayment').textContent = 
+                formatPaymentMethod(order.payment_method);
+
+            if (order.address) {
+                document.getElementById('addressRow').style.display = 'flex';
+                document.getElementById('displayAddress').textContent = order.address;
+            }
+
+            // Itens
+            const itemsList = document.getElementById('itemsList');
+            itemsList.innerHTML = order.order_items.map(item => `
+                <div class="item-row">
+                    <span class="item-name">${item.quantity}x ${item.product_name}</span>
+                    <span class="item-price">R$ ${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+            `).join('');
+
+            // Total
+            document.getElementById('displayTotal').textContent = 'R$ ' + parseFloat(order.total).toFixed(2);
+        }
+
+        // ==================== TIMELINE ====================
+
+        function updateTimeline(order) {
+            const timeline = document.getElementById('statusTimeline');
+            
+            const steps = [
+                {
+                    status: 'novo',
+                    icon: 'fa-receipt',
+                    title: 'Pedido Recebido',
+                    time: order.created_at
+                },
+                {
+                    status: 'preparando',
+                    icon: 'fa-fire',
+                    title: 'Preparando',
+                    time: order.accepted_at
+                },
+                {
+                    status: 'pronto',
+                    icon: 'fa-check',
+                    title: order.delivery_type === 'delivery' ? 'Saiu para Entrega' : 'Pronto para Retirada',
+                    time: order.ready_at
+                },
+                {
+                    status: 'entregue',
+                    icon: 'fa-box',
+                    title: order.delivery_type === 'delivery' ? 'Entregue' : 'Retirado',
+                    time: order.delivered_at
+                }
+            ];
+
+            const currentStatusIndex = steps.findIndex(s => s.status === order.status);
+
+            timeline.innerHTML = steps.map((step, index) => {
+                let stepClass = '';
+                if (index < currentStatusIndex) {
+                    stepClass = 'completed';
+                } else if (index === currentStatusIndex) {
+                    stepClass = 'current';
+                }
+
+                return `
+                    <div class="timeline-step ${stepClass}">
+                        <div class="timeline-icon">
+                            <i class="fas ${step.icon}"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${step.title}</div>
+                            <div class="timeline-time">
+                                ${step.time ? new Date(step.time).toLocaleTimeString('pt-BR', { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit' 
+                                }) : 'Aguardando...'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== TEMPO ESTIMADO ====================
+
+        function updateEstimatedTime(status, deliveryType) {
+            const estimatedTimeEl = document.getElementById('estimatedTime');
+            const estimatedTimeText = document.getElementById('estimatedTimeText');
+
+            const timeEstimates = {
+                'novo': {
+                    delivery: 'Tempo estimado: 35-45 minutos',
+                    retirada: 'Tempo estimado: 25-35 minutos'
+                },
+                'preparando': {
+                    delivery: 'Tempo estimado: 25-35 minutos',
+                    retirada: 'Tempo estimado: 15-25 minutos'
+                },
+                'pronto': {
+                    delivery: 'Saindo para entrega! 10-15 minutos',
+                    retirada: 'Pronto! Pode retirar agora'
+                },
+                'entregue': {
+                    delivery: 'Pedido entregue! Bom apetite! 🎉',
+                    retirada: 'Pedido retirado! Bom apetite! 🎉'
+                }
+            };
+
+            const type = deliveryType === 'delivery' ? 'delivery' : 'retirada';
+            estimatedTimeText.textContent = timeEstimates[status][type];
+
+            // Mudar cor baseado no status
+            if (status === 'entregue') {
+                estimatedTimeEl.style.background = 'linear-gradient(135deg, #4CAF50, #66BB6A)';
+            } else if (status === 'pronto') {
+                estimatedTimeEl.style.background = 'linear-gradient(135deg, #FF6B6B, #FF8E53)';
+            }
+        }
+
+        // ==================== REALTIME TRACKING ====================
+
+        function setupRealtimeTracking(orderId) {
+            // Cancelar canal anterior se existir
+            if (realtimeChannel) {
+                realtimeChannel.unsubscribe();
+            }
+
+            // Criar novo canal
+            realtimeChannel = supabase
+                .channel('order-tracking')
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `id=eq.${orderId}`
+                }, (payload) => {
+                    console.log('Pedido atualizado:', payload);
+                    currentOrder = { ...currentOrder, ...payload.new };
+                    displayOrderDetails(currentOrder);
+                    
+                    showNotification('Status do pedido atualizado!', 'success');
+                    playNotificationSound();
+                })
+                .subscribe();
+        }
+
+        // ==================== UTILITÁRIOS ====================
+
+        function formatPaymentMethod(method) {
+            const methods = {
+                'dinheiro': '💵 Dinheiro',
+                'cartao': '💳 Cartão',
+                'pix': '📱 PIX'
+            };
+            return methods[method] || method;
+        }
+
+        function resetSearch() {
+            document.getElementById('searchSection').style.display = 'block';
+            document.getElementById('orderDetails').classList.remove('active');
+            document.getElementById('searchForm').reset();
+            
+            if (realtimeChannel) {
+                realtimeChannel.unsubscribe();
+                realtimeChannel = null;
+            }
+            
+            currentOrder = null;
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const icon = document.getElementById('notificationIcon');
+            const messageEl = document.getElementById('notificationMessage');
+
+            notification.className = `notification show ${type}`;
+            
+            if (type === 'success') {
+                icon.innerHTML = '<i class="fas fa-check-circle" style="font-size: 1.5em; color: #4CAF50;"></i>';
+            } else {
+                icon.innerHTML = '<i class="fas fa-exclamation-circle" style="font-size: 1.5em; color: #f44336;"></i>';
+            }
+            
+            messageEl.textContent = message;
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 5000);
+        }
+
+        function playNotificationSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        // ==================== BUSCA POR URL ====================
+
+        function checkUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('order');
+            const phone = urlParams.get('phone');
+
+            if (orderId && phone) {
+                document.getElementById('orderId').value = orderId;
+                document.getElementById('customerPhone').value = phone;
+                document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+            }
+        }
+
+        // ==================== AUTO-REFRESH ====================
+
+        function startAutoRefresh() {
+            setInterval(async () => {
+                if (currentOrder && currentOrder.status !== 'entregue') {
+                    try {
+                        const { data, error } = await supabase
+                            .from('orders')
+                            .select('*, order_items(*)')
+                            .eq('id', currentOrder.id)
+                            .single();
+
+                        if (!error && data) {
+                            // Verificar se houve mudança no status
+                            if (data.status !== currentOrder.status) {
+                                currentOrder = data;
+                                displayOrderDetails(data);
+                                showNotification('Status do pedido atualizado!', 'success');
+                                playNotificationSound();
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Erro ao atualizar pedido:', error);
+                    }
+                }
+            }, 30000); // Atualizar a cada 30 segundos como backup
+        }
+
+        // ==================== COMPARTILHAR RASTREAMENTO ====================
+
+        function shareTracking() {
+            if (navigator.share && currentOrder) {
+                navigator.share({
+                    title: 'Rastreamento do Pedido',
+                    text: `Acompanhe meu pedido #${currentOrder.id.substring(0, 8)}`,
+                    url: window.location.href
+                }).catch(console.error);
+            }
+        }
+
+        // ==================== INICIALIZAÇÃO ====================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkUrlParams();
+            startAutoRefresh();
+        });
+
+        // ==================== CLEANUP ====================
+
+        window.addEventListener('beforeunload', () => {
+            if (realtimeChannel) {
+                realtimeChannel.unsubscribe();
+            }
+        });
+
+        // ==================== PWA - ADICIONAR À TELA INICIAL ====================
+
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Mostrar botão de instalação se necessário
+            console.log('App pode ser instalado');
+        });
+    </script>
+</body>
+</html>
