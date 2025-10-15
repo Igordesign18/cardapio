@@ -792,7 +792,7 @@
 <body>
     <div class="notifications-container" id="notificationsContainer"></div>
 
-    <div class="login-container" id="loginPage">
+    <div class="login-container hidden" id="loginPage">
         <div class="login-box">
             <div class="login-header">
                 <i class="fas fa-utensils"></i>
@@ -815,7 +815,7 @@
         </div>
     </div>
 
-    <div id="adminPanel" class="hidden">
+    <div id="adminPanel">
         <div class="sidebar">
             <div class="logo">
                 <i class="fas fa-utensils"></i>
@@ -824,7 +824,7 @@
 
             <div class="user-info">
                 <i class="fas fa-user-circle"></i>
-                <div class="user-email" id="userEmail"></div>
+                <div class="user-email" id="userEmail">Admin (Sem Login)</div>
             </div>
 
             <div class="menu-item active" onclick="showSection('dashboard')">
@@ -847,8 +847,8 @@
                 <span>Relatórios</span>
             </div>
 
-            <button class="logout-btn" onclick="logout()">
-                <i class="fas fa-sign-out-alt"></i> Sair
+            <button class="logout-btn" onclick="window.location.reload()">
+                <i class="fas fa-sync-alt"></i> Recarregar Painel
             </button>
         </div>
 
@@ -1018,85 +1018,34 @@
     </div>
 
     <script>
-        // ======================================================================================
-        // ATENÇÃO: SUBSTITUA COM SUAS CREDENCIAIS REAIS DO SUPABASE
-        // A CHAVE DEVE SER A 'anon' (public)
-        // ======================================================================================
+        // CONFIGURAÇÃO DO SUPABASE
+        // Mantemos a chave anon, pois ela é necessária para acessar as tabelas
         const SUPABASE_URL = 'https://snvaahvqhvicgxudsvor.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNudmFhaHZxaHZpY2d4dWRzdm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTA4MDYsImV4cCI6MjA3NjA2NjgwNn0.zxv0pso4n1Pd4HKz2y4bELGopOiq27KOo3StSUkfsm4'; 
-        // ======================================================================================
 
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let currentUser = null;
+        let currentUser = { email: 'admin@sem_auth.com' }; // Usuário mock
         let currentFilter = 'novo';
         let editingProductId = null;
 
-        // ==================== AUTENTICAÇÃO ====================
+        // ==================== AUTENTICAÇÃO (REMOVIDA) ====================
 
-        // LOGIN (COM TRATAMENTO DE ERRO MELHORADO)
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            const loginBtn = document.getElementById('loginBtn');
-            
-            loginBtn.disabled = true;
-            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
+        // LOGIN (Função de login removida)
+        // document.getElementById('loginForm').addEventListener('submit', ...);
 
-            try {
-                // Tenta fazer o login
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-
-                if (error) {
-                    // Lança o erro para o bloco catch
-                    throw error; 
-                }
-
-                currentUser = data.user;
-                showNotification('Login realizado com sucesso!', 'success');
-                showAdminPanel();
-                
-            } catch (error) {
-                // Captura o erro, exibe a mensagem detalhada e restaura o botão
-                console.error('Erro ao fazer login:', error);
-                // A mensagem de erro do Supabase é exibida na notificação
-                showNotification('Erro ao fazer login: ' + error.message, 'error'); 
-                loginBtn.disabled = false;
-                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
-            }
-        });
-
-        // LOGOUT
-        async function logout() {
+        // LOGOUT (Apenas recarrega a página ou retorna ao "login" mock)
+        function logout() {
             if (confirm('Deseja realmente sair?')) {
-                await supabase.auth.signOut();
-                currentUser = null;
-                document.getElementById('loginPage').classList.remove('hidden');
-                document.getElementById('adminPanel').classList.add('hidden');
-                showNotification('Logout realizado com sucesso', 'info');
+                window.location.reload();
             }
         }
 
-        // VERIFICAR SESSÃO
-        async function checkSession() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                showAdminPanel();
-            }
-        }
+        // FUNÇÕES DE SESSÃO REMOVIDAS, POIS O PAINEL CARREGA DIRETAMENTE
 
-        // MOSTRAR PAINEL ADMIN
+        // MOSTRAR PAINEL ADMIN (Modificada para inicialização direta)
         function showAdminPanel() {
-            document.getElementById('loginPage').classList.add('hidden');
-            document.getElementById('adminPanel').classList.remove('hidden');
-            // Garante que currentUser existe antes de tentar acessar .email
-            document.getElementById('userEmail').textContent = currentUser ? currentUser.email : 'Admin'; 
+            // Apenas carrega os dados
             loadDashboard();
             loadProducts();
             loadOrders();
@@ -1104,10 +1053,12 @@
 
         // ==================== PRODUTOS ====================
 
-        // CARREGAR PRODUTOS
+        // CARREGAR PRODUTOS (Sem alteração na lógica, mas agora usa a chave anon)
         async function loadProducts() {
             try {
-                // A chave pública anon precisa de permissão de RLS para SELECT em 'products'
+                // Para o painel funcionar sem login, você DEVE desativar o RLS
+                // (Row Level Security) na tabela 'products' ou criar uma política
+                // RLS que permita 'select' e 'update' para o papel 'anon'.
                 const { data, error } = await supabase
                     .from('products')
                     .select('*')
@@ -1120,11 +1071,11 @@
                 
             } catch (error) {
                 console.error('Erro ao carregar produtos:', error);
-                showNotification('Erro ao carregar produtos', 'error');
+                showNotification('Erro ao carregar produtos. Verifique se o RLS está desativado.', 'error');
             }
         }
 
-        // RENDERIZAR PRODUTOS
+        // RENDERIZAR PRODUTOS (Sem alteração)
         function renderProducts(products) {
             const grid = document.getElementById('productsGrid');
             
@@ -1165,7 +1116,7 @@
             `).join('');
         }
 
-        // ABRIR MODAL PRODUTO
+        // ABRIR MODAL PRODUTO (Sem alteração)
         function openProductModal(productId = null) {
             editingProductId = productId;
             const modal = document.getElementById('productModal');
@@ -1184,7 +1135,7 @@
             modal.classList.add('active');
         }
 
-        // CARREGAR DADOS DO PRODUTO
+        // CARREGAR DADOS DO PRODUTO (Sem alteração na lógica)
         async function loadProductData(productId) {
             try {
                 const { data, error } = await supabase
@@ -1213,13 +1164,13 @@
             }
         }
 
-        // FECHAR MODAL
+        // FECHAR MODAL (Sem alteração)
         function closeProductModal() {
             document.getElementById('productModal').classList.remove('active');
             editingProductId = null;
         }
 
-        // PREVIEW DA IMAGEM
+        // PREVIEW DA IMAGEM (Sem alteração)
         function previewImage(event) {
             const file = event.target.files[0];
             if (file) {
@@ -1233,7 +1184,7 @@
             }
         }
 
-        // SALVAR PRODUTO
+        // SALVAR PRODUTO (Sem alteração na lógica)
         document.getElementById('productForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -1252,7 +1203,7 @@
                     const fileName = `${Math.random()}.${fileExt}`;
                     const filePath = `products/${fileName}`;
 
-                    // O usuário precisa estar logado (authenticated) e ter políticas de RLS para upload
+                    // RLS no Storage DEVE permitir upload para o papel 'anon'
                     const { error: uploadError } = await supabase.storage
                         .from('product-images')
                         .upload(filePath, imageFile);
@@ -1275,7 +1226,7 @@
                 };
 
                 if (editingProductId) {
-                    // Atualizar produto existente (RLS: UPDATE para authenticated)
+                    // RLS na tabela 'products' DEVE permitir update para o papel 'anon'
                     const { error } = await supabase
                         .from('products')
                         .update(productData)
@@ -1284,7 +1235,7 @@
                     if (error) throw error;
                     showNotification('Produto atualizado com sucesso!', 'success');
                 } else {
-                    // Criar novo produto (RLS: INSERT para authenticated)
+                    // RLS na tabela 'products' DEVE permitir insert para o papel 'anon'
                     const { error } = await supabase
                         .from('products')
                         .insert([productData]);
@@ -1302,17 +1253,17 @@
             }
         });
 
-        // EDITAR PRODUTO
+        // EDITAR PRODUTO (Sem alteração)
         function editProduct(productId) {
             openProductModal(productId);
         }
 
-        // DELETAR PRODUTO
+        // DELETAR PRODUTO (Sem alteração na lógica)
         async function deleteProduct(productId) {
             if (!confirm('Tem certeza que deseja excluir este produto?')) return;
 
             try {
-                // RLS: DELETE para authenticated
+                // RLS na tabela 'products' DEVE permitir delete para o papel 'anon'
                 const { error } = await supabase
                     .from('products')
                     .delete()
@@ -1331,10 +1282,10 @@
 
         // ==================== PEDIDOS ====================
 
-        // CARREGAR PEDIDOS
+        // CARREGAR PEDIDOS (Sem alteração na lógica)
         async function loadOrders() {
             try {
-                // RLS: SELECT para authenticated
+                // RLS na tabela 'orders' DEVE permitir select para o papel 'anon'
                 const { data, error } = await supabase
                     .from('orders')
                     .select('*, order_items(*)')
@@ -1347,11 +1298,11 @@
                 
             } catch (error) {
                 console.error('Erro ao carregar pedidos:', error);
-                showNotification('Erro ao carregar pedidos', 'error');
+                showNotification('Erro ao carregar pedidos. Verifique o RLS.', 'error');
             }
         }
 
-        // RENDERIZAR PEDIDOS (Função sem alterações)
+        // RENDERIZAR PEDIDOS (Sem alteração)
         function renderOrders(orders) {
             const grid = document.getElementById('ordersGrid');
             const filteredOrders = orders.filter(o => o.status === currentFilter);
@@ -1415,7 +1366,7 @@
             `).join('');
         }
 
-        // AÇÕES DOS PEDIDOS (Função sem alterações)
+        // AÇÕES DOS PEDIDOS (Sem alteração)
         function getOrderActions(order) {
             const actions = {
                 'novo': `
@@ -1438,10 +1389,10 @@
             return actions[order.status] || '';
         }
 
-        // ATUALIZAR STATUS DO PEDIDO
+        // ATUALIZAR STATUS DO PEDIDO (Sem alteração na lógica)
         async function updateOrderStatus(orderId, newStatus) {
             try {
-                // RLS: UPDATE para authenticated
+                // RLS na tabela 'orders' DEVE permitir update para o papel 'anon'
                 const { error } = await supabase
                     .from('orders')
                     .update({ status: newStatus })
@@ -1464,7 +1415,7 @@
             }
         }
 
-        // FILTRAR PEDIDOS (Função sem alterações)
+        // FILTRAR PEDIDOS (Sem alteração)
         function filterOrders(status) {
             currentFilter = status;
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -1472,7 +1423,7 @@
             loadOrders();
         }
 
-        // ATUALIZAR ESTATÍSTICAS DE PEDIDOS (Função sem alterações)
+        // ATUALIZAR ESTATÍSTICAS DE PEDIDOS (Sem alteração)
         function updateOrderStats(orders) {
             const statusCounts = {
                 'novo': 0,
@@ -1497,7 +1448,7 @@
 
         async function loadDashboard() {
             try {
-                // RLS: SELECT para authenticated
+                // RLS: SELECT na tabela 'orders' e 'products' DEVE permitir para o papel 'anon'
                 const { data: orders } = await supabase
                     .from('orders')
                     .select('*');
@@ -1519,7 +1470,7 @@
             }
         }
 
-        // ==================== UTILITÁRIOS ====================
+        // ==================== UTILITÁRIOS (Sem alteração) ====================
 
         function updateStats() {
             loadDashboard();
@@ -1567,7 +1518,7 @@
             return texts[status] || status;
         }
 
-        // NOTIFICAÇÕES (Função sem alterações)
+        // NOTIFICAÇÕES
         function showNotification(message, type = 'info') {
             const container = document.getElementById('notificationsContainer');
             const notification = document.createElement('div');
@@ -1592,7 +1543,7 @@
             }, 5000);
         }
 
-        // NAVEGAÇÃO (Função sem alterações)
+        // NAVEGAÇÃO
         function showSection(section) {
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
@@ -1605,7 +1556,7 @@
             if (section === 'produtos') loadProducts();
         }
 
-        // REALTIME - Escutar mudanças no banco (Função sem alterações)
+        // REALTIME - Escutar mudanças no banco
         function setupRealtimeSubscriptions() {
             // Escutar novos pedidos
             supabase
@@ -1627,7 +1578,7 @@
                 .subscribe();
         }
 
-        // SOM DE NOTIFICAÇÃO (Função sem alterações)
+        // SOM DE NOTIFICAÇÃO
         function playNotificationSound() {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioContext.createOscillator();
@@ -1646,9 +1597,11 @@
             oscillator.stop(audioContext.currentTime + 0.5);
         }
 
-        // INICIALIZAÇÃO (Função sem alterações)
-        checkSession();
-        setupRealtimeSubscriptions();
+        // ==================== INICIALIZAÇÃO ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            showAdminPanel(); // Carrega o painel diretamente
+            setupRealtimeSubscriptions();
+        });
     </script>
 </body>
 </html>
