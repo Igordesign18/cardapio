@@ -423,7 +423,7 @@
             font-weight: bold;
         }
 
-        /* CHECKOUT MODAL */
+        /* MODAL */
         .modal {
             display: none;
             position: fixed;
@@ -509,7 +509,7 @@
             background: #fff5f5;
         }
 
-        .form-input {
+        .form-input, .form-checkbox-label {
             width: 100%;
             padding: 12px 15px;
             border: 2px solid #e0e0e0;
@@ -522,6 +522,22 @@
         .form-input:focus {
             outline: none;
             border-color: #FF6B6B;
+        }
+
+        .form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .form-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
         }
 
         .confirm-order-btn {
@@ -546,6 +562,16 @@
         .confirm-order-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
+        }
+
+        .loyalty-badge {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 600;
         }
 
         @keyframes fadeInUp {
@@ -627,6 +653,48 @@
         </div>
     </div>
 
+    <!-- MODAL CADASTRO DE CLIENTE -->
+    <div class="modal" id="customerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-user-plus"></i> Cadastre-se</h2>
+                <button class="close-modal" onclick="closeCustomerModal()">×</button>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 20px;">
+                <p style="color: #7f8c8d; margin-bottom: 10px;">
+                    Cadastre-se para participar do nosso programa de fidelidade!
+                </p>
+                <div style="background: linear-gradient(135deg, #FFD700, #FFA500); color: white; padding: 15px; border-radius: 10px; font-weight: 600;">
+                    🎁 Ganhe cashback em todos os pedidos!
+                </div>
+            </div>
+
+            <form id="customerForm">
+                <div class="step-card">
+                    <input type="text" class="form-input" id="custName" placeholder="Nome completo *" required>
+                    <input type="email" class="form-input" id="custEmail" placeholder="E-mail *" required>
+                    <input type="tel" class="form-input" id="custPhone" placeholder="Telefone com DDD *" required>
+                </div>
+
+                <div class="form-checkbox">
+                    <input type="checkbox" id="acceptsMarketing" checked>
+                    <label for="acceptsMarketing">
+                        Quero receber ofertas exclusivas e promoções por e-mail e WhatsApp
+                    </label>
+                </div>
+
+                <button type="submit" class="confirm-order-btn">
+                    <i class="fas fa-check-circle"></i> Cadastrar e Continuar
+                </button>
+
+                <p style="text-align: center; margin-top: 15px; color: #7f8c8d; font-size: 0.9em;">
+                    Ao cadastrar, você aceita nossos termos de uso
+                </p>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL CHECKOUT -->
     <div class="modal" id="checkoutModal">
         <div class="modal-content">
@@ -635,11 +703,13 @@
                 <button class="close-modal" onclick="closeCheckout()">×</button>
             </div>
 
+            <div id="loyaltyInfo"></div>
+
             <form id="checkoutForm">
                 <div class="step-card">
                     <div class="step-title"><i class="fas fa-user"></i> Seus Dados</div>
-                    <input type="text" class="form-input" id="customerName" placeholder="Nome completo" required>
-                    <input type="tel" class="form-input" id="customerPhone" placeholder="Telefone" required>
+                    <input type="text" class="form-input" id="customerName" placeholder="Nome completo" required readonly>
+                    <input type="tel" class="form-input" id="customerPhone" placeholder="Telefone" required readonly>
                 </div>
 
                 <div class="step-card">
@@ -688,20 +758,14 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNudmFhaHZxaHZpY2d4dWRzdm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTA4MDYsImV4cCI6MjA3NjA2NjgwNn0.zxv0pso4n1Pd4HKz2y4bELGopOiq27KOo3StSUkfsm4';
 
         console.log('🔧 Iniciando aplicação...');
-        console.log('📦 Supabase library:', typeof supabase);
         
         let supabaseClient;
         try {
             const { createClient } = supabase;
-            console.log('✅ createClient encontrado:', typeof createClient);
             supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-            console.log('✅ Cliente Supabase criado:', supabaseClient);
+            console.log('✅ Cliente Supabase criado');
         } catch (error) {
             console.error('❌ Erro ao criar cliente Supabase:', error);
-            document.getElementById('loadingIndicator').innerHTML = `
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Erro ao inicializar: ${error.message}</p>
-            `;
         }
 
         // VARIÁVEIS GLOBAIS
@@ -710,6 +774,107 @@
         let currentCategory = 'todos';
         let deliveryType = 'delivery';
         let paymentMethod = null;
+        let currentCustomer = null;
+
+        // ==================== GERENCIAMENTO DE CLIENTES ====================
+
+        function loadCustomerFromStorage() {
+            const savedCustomer = localStorage.getItem('burguerhouse_customer');
+            if (savedCustomer) {
+                try {
+                    currentCustomer = JSON.parse(savedCustomer);
+                    console.log('✅ Cliente carregado:', currentCustomer.name);
+                } catch (e) {
+                    console.error('Erro ao carregar cliente:', e);
+                }
+            }
+        }
+
+        function saveCustomerToStorage(customer) {
+            localStorage.setItem('burguerhouse_customer', JSON.stringify(customer));
+            currentCustomer = customer;
+        }
+
+        async function registerOrUpdateCustomer(name, email, phone, acceptsMarketing) {
+            try {
+                // Verificar se cliente já existe
+                const { data: existing, error: searchError } = await supabaseClient
+                    .from('customers')
+                    .select('*')
+                    .eq('email', email)
+                    .single();
+
+                let customer;
+
+                if (existing) {
+                    // Atualizar cliente existente
+                    const { data, error } = await supabaseClient
+                        .from('customers')
+                        .update({
+                            name: name,
+                            phone: phone,
+                            accepts_marketing: acceptsMarketing
+                        })
+                        .eq('id', existing.id)
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    customer = data;
+                    showNotification('Bem-vindo de volta, ' + name + '! 🎉', 'success');
+                } else {
+                    // Criar novo cliente
+                    const { data, error } = await supabaseClient
+                        .from('customers')
+                        .insert([{
+                            name: name,
+                            email: email,
+                            phone: phone,
+                            accepts_marketing: acceptsMarketing
+                        }])
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    customer = data;
+                    showNotification('Cadastro realizado com sucesso! 🎉', 'success');
+                }
+
+                saveCustomerToStorage(customer);
+                return customer;
+
+            } catch (error) {
+                console.error('❌ Erro ao registrar cliente:', error);
+                throw error;
+            }
+        }
+
+        // ==================== MODAL CADASTRO ====================
+
+        function openCustomerModal() {
+            document.getElementById('customerModal').classList.add('active');
+        }
+
+        function closeCustomerModal() {
+            document.getElementById('customerModal').classList.remove('active');
+        }
+
+        document.getElementById('customerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('custName').value;
+            const email = document.getElementById('custEmail').value;
+            const phone = document.getElementById('custPhone').value;
+            const acceptsMarketing = document.getElementById('acceptsMarketing').checked;
+
+            try {
+                await registerOrUpdateCustomer(name, email, phone, acceptsMarketing);
+                closeCustomerModal();
+                openCheckout();
+            } catch (error) {
+                showNotification('Erro ao cadastrar. Tente novamente.', 'warning');
+            }
+        });
 
         // ==================== CARREGAR PRODUTOS ====================
 
@@ -719,28 +884,20 @@
                 document.getElementById('loadingIndicator').style.display = 'block';
                 document.getElementById('productsGrid').style.display = 'none';
 
-                console.log('🔌 Tentando conectar ao Supabase...');
                 const { data, error } = await supabaseClient
                     .from('products')
                     .select('*')
                     .order('name');
 
-                console.log('📊 Resposta do Supabase:', { data, error });
-
-                if (error) {
-                    console.error('❌ Erro do Supabase:', error);
-                    throw error;
-                }
+                if (error) throw error;
 
                 products = data || [];
                 console.log('✅ Produtos carregados:', products.length);
                 
                 if (products.length === 0) {
-                    console.warn('⚠️ Nenhum produto encontrado na tabela!');
                     document.getElementById('loadingIndicator').innerHTML = `
                         <i class="fas fa-inbox"></i>
                         <p>Nenhum produto cadastrado ainda</p>
-                        <p style="font-size: 0.9em; margin-top: 10px;">Adicione produtos no painel administrativo</p>
                     `;
                     return;
                 }
@@ -754,12 +911,6 @@
             } catch (error) {
                 console.error('❌ Erro ao carregar produtos:', error);
                 showNotification('Erro ao carregar cardápio. Tente novamente.', 'warning');
-                document.getElementById('loadingIndicator').innerHTML = `
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>Erro ao carregar cardápio</p>
-                    <p style="font-size: 0.9em; margin-top: 10px;">${error.message}</p>
-                    <button onclick="loadProducts()" style="margin-top: 15px; padding: 10px 20px; background: #FF6B6B; color: white; border: none; border-radius: 8px; cursor: pointer;">Tentar Novamente</button>
-                `;
             }
         }
 
@@ -931,6 +1082,32 @@
         // ==================== CHECKOUT ====================
 
         function openCheckout() {
+            // Verificar se cliente está cadastrado
+            if (!currentCustomer) {
+                openCustomerModal();
+                return;
+            }
+
+            // Preencher dados do cliente
+            document.getElementById('customerName').value = currentCustomer.name;
+            document.getElementById('customerPhone').value = currentCustomer.phone;
+
+            // Mostrar informações de fidelidade
+            const loyaltyInfo = document.getElementById('loyaltyInfo');
+            if (currentCustomer.cashback_balance > 0) {
+                loyaltyInfo.innerHTML = `
+                    <div class="loyalty-badge">
+                        🎁 Você tem R$ ${parseFloat(currentCustomer.cashback_balance).toFixed(2)} em cashback disponível!
+                    </div>
+                `;
+            } else {
+                loyaltyInfo.innerHTML = `
+                    <div class="loyalty-badge">
+                        ⭐ Ganhe 5% de cashback neste pedido!
+                    </div>
+                `;
+            }
+
             updateOrderSummary();
             document.getElementById('checkoutModal').classList.add('active');
             toggleCart();
@@ -973,6 +1150,7 @@
             const summary = document.getElementById('orderSummary');
             const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
             const deliveryFee = deliveryType === 'delivery' ? 5.00 : 0;
+            const cashback = subtotal * 0.05; // 5% de cashback
             const total = subtotal + deliveryFee;
             
             summary.innerHTML = `
@@ -990,6 +1168,10 @@
                     <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
                         <span>Taxa de entrega</span>
                         <span style="font-weight: 600;">R$ ${deliveryFee.toFixed(2)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #4CAF50;">
+                        <span>💰 Cashback (5%)</span>
+                        <span style="font-weight: 600;">R$ ${cashback.toFixed(2)}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 1.2em;">
                         <strong>Total</strong>
@@ -1023,11 +1205,13 @@
                 const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
                 const deliveryFee = deliveryType === 'delivery' ? 5.00 : 0;
                 const total = subtotal + deliveryFee;
+                const cashback = subtotal * 0.05;
 
                 // Inserir pedido
                 const { data: orderData, error: orderError } = await supabaseClient
                     .from('orders')
                     .insert([{
+                        customer_id: currentCustomer.id,
                         customer_name: customerName,
                         customer_phone: customerPhone,
                         address: customerAddress,
@@ -1055,6 +1239,24 @@
 
                 if (itemsError) throw itemsError;
 
+                // Atualizar dados do cliente (total de pedidos e cashback)
+                const { error: customerError } = await supabaseClient
+                    .from('customers')
+                    .update({
+                        total_orders: currentCustomer.total_orders + 1,
+                        total_spent: parseFloat(currentCustomer.total_spent) + total,
+                        cashback_balance: parseFloat(currentCustomer.cashback_balance) + cashback
+                    })
+                    .eq('id', currentCustomer.id);
+
+                if (customerError) throw customerError;
+
+                // Atualizar cliente local
+                currentCustomer.total_orders += 1;
+                currentCustomer.total_spent = parseFloat(currentCustomer.total_spent) + total;
+                currentCustomer.cashback_balance = parseFloat(currentCustomer.cashback_balance) + cashback;
+                saveCustomerToStorage(currentCustomer);
+
                 // Sucesso!
                 showNotification('Pedido realizado com sucesso! 🎉', 'success');
                 
@@ -1069,7 +1271,7 @@
                 deliveryType = 'delivery';
                 
                 // Mostrar confirmação
-                showOrderConfirmation(orderData.id);
+                showOrderConfirmation(orderData.id, cashback);
 
             } catch (error) {
                 console.error('Erro ao finalizar pedido:', error);
@@ -1082,7 +1284,7 @@
 
         // ==================== CONFIRMAÇÃO ====================
 
-        function showOrderConfirmation(orderId) {
+        function showOrderConfirmation(orderId, cashback) {
             const modal = document.getElementById('checkoutModal');
             modal.querySelector('.modal-content').innerHTML = `
                 <div style="text-align: center; padding: 40px 20px;">
@@ -1093,6 +1295,12 @@
                     <p style="color: #7f8c8d; font-size: 1.1em; margin-bottom: 10px;">Número do pedido: <strong>#${orderId.substring(0, 8)}</strong></p>
                     <p style="color: #7f8c8d; margin-bottom: 30px;">Seu pedido está sendo preparado com carinho! ❤️</p>
                     
+                    <div style="background: linear-gradient(135deg, #FFD700, #FFA500); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 10px;">🎁 Cashback Recebido!</h3>
+                        <p style="font-size: 1.8em; font-weight: bold;">R$ ${cashback.toFixed(2)}</p>
+                        <p style="font-size: 0.9em; margin-top: 10px;">Use em sua próxima compra!</p>
+                    </div>
+
                     <div style="background: #f9f9f9; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
                         <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
                             <div style="width: 30px; height: 30px; background: #4CAF50; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
@@ -1258,6 +1466,7 @@
             if (e.key === 'Escape') {
                 document.getElementById('cartSidebar').classList.remove('open');
                 document.getElementById('checkoutModal').classList.remove('active');
+                document.getElementById('customerModal').classList.remove('active');
             }
             
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -1293,8 +1502,9 @@
             console.log('🚀 DOM carregado, iniciando aplicação...');
             
             try {
+                loadCustomerFromStorage();
                 loadCartFromStorage();
-                console.log('✅ Carrinho carregado do localStorage');
+                console.log('✅ Dados locais carregados');
                 
                 await loadProducts();
                 console.log('✅ Produtos carregados');
@@ -1307,7 +1517,11 @@
                 }, 500);
 
                 setTimeout(() => {
-                    showNotification('Bem-vindo ao Burguer House! 🍔', 'success');
+                    if (currentCustomer) {
+                        showNotification(`Bem-vindo de volta, ${currentCustomer.name}! 🍔`, 'success');
+                    } else {
+                        showNotification('Bem-vindo ao Burguer House! 🍔', 'success');
+                    }
                 }, 1000);
                 
                 console.log('✅ Aplicação iniciada com sucesso!');
@@ -1328,11 +1542,18 @@
             showNotification('Você está offline. Verifique sua conexão.', 'warning');
         });
 
-        // ==================== ANALYTICS ====================
+        // Fechar modais ao clicar fora
+        document.getElementById('customerModal').addEventListener('click', (e) => {
+            if (e.target.id === 'customerModal') {
+                closeCustomerModal();
+            }
+        });
 
-        function trackEvent(eventName, data) {
-            console.log('Event:', eventName, data);
-        }
+        document.getElementById('checkoutModal').addEventListener('click', (e) => {
+            if (e.target.id === 'checkoutModal') {
+                closeCheckout();
+            }
+        });
     </script>
 </body>
 </html>
